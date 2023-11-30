@@ -5,9 +5,8 @@ import math as m
 
 /*
 TODO:
-- change viewport pos
 - lil line when cursor not far enough else: outline the concerned square with green/red depending on if valid or not (if it misses a stacking obj signal it) and a little arrow pointing to the square that is pointed towards
-- essayer de faire une fonction pour les mvts (1mvt -> -1 slime -> déplacement du premier slime)
+- faire une fonction pour transfo des coos en coo d'arrays bl br tr lr pour tout uniformiser sans les checks répétitifs dcp
 - énergie -> recharge -> dépenses
 - déplacement cavalier (d'abord mangeage extérieur puis possibilité mangeage intérrieur)
 - save
@@ -38,6 +37,11 @@ mut:
 	base_click_y f64
 	click_x f64
 	click_y f64
+	block_click_x f64
+	block_click_y f64
+	mouse_x f64
+	mouse_y f64
+	clicked bool
 
 	viewport_x f64
 	viewport_y f64
@@ -63,7 +67,7 @@ fn main() {
         frame_fn: on_frame
         event_fn: on_event
         sample_count: 2
-		ui_mode: true
+		//ui_mode: true
     )	
 
     //lancement du programme/de la fenêtre
@@ -75,17 +79,35 @@ fn on_frame(mut app App) {
 	if app.viewport_x == 0 && app.viewport_y == 0 {
 		app.viewport_x = app.win_size.width/2
 		app.viewport_y = app.win_size.height/2
+	}else{
+		if app.mouse_x > app.win_size.width-100 {
+			app.viewport_x -= (100 - (app.win_size.width-app.mouse_x))/10.0
+		}
+		if app.mouse_x < 100 {
+			app.viewport_x += (100 - (app.mouse_x))/10.0
+		}
+		if app.mouse_y > app.win_size.height-100 {
+			app.viewport_y -= (100 - (app.win_size.height-app.mouse_y))/10.0
+		}
+		if app.mouse_y < 100 {
+			app.viewport_y += (100 - (app.mouse_y))/10.0
+		}
 	}
     //Draw
     app.gg.begin()
+	app.draw_slimes()
+	app.highlights()
+    app.gg.end()
+}
 
+fn (mut app App) draw_slimes() {
 	for y, line in app.bl {
 		y_pos := f32((y+1)*tile_size+1+app.viewport_y)
-		if y_pos >= -tile_size/2 && y_pos < app.win_size.height {
+		if y_pos >= -tile_size && y_pos < app.win_size.height {
 			for x, slime in line {
 				if slime {
 					x_pos := f32((-x-1)*tile_size+1+app.viewport_x)
-					if x_pos >= -tile_size/2 && x_pos < app.win_size.width {
+					if x_pos >= -tile_size && x_pos < app.win_size.width {
 						app.gg.draw_rounded_rect_filled(x_pos, y_pos, tile_size-2, tile_size-2, 5, gx.red)
 					}
 				}
@@ -94,11 +116,11 @@ fn on_frame(mut app App) {
 	}
 	for y, line in app.br {
 		y_pos := f32((y+1)*tile_size+1+app.viewport_y)
-		if y_pos >= -tile_size/2 && y_pos < app.win_size.height {
+		if y_pos >= -tile_size && y_pos < app.win_size.height {
 			for x, slime in line {
 				if slime {
 					x_pos := f32(x*tile_size+1+app.viewport_x)
-					if x_pos >= -tile_size/2 && x_pos < app.win_size.width {
+					if x_pos >= -tile_size && x_pos < app.win_size.width {
 						app.gg.draw_rounded_rect_filled(x_pos, y_pos, tile_size-2, tile_size-2, 5, gx.red)
 					}
 				}
@@ -107,11 +129,11 @@ fn on_frame(mut app App) {
 	}
 	for y, line in app.tr {
 		y_pos := f32(-y*tile_size+1+app.viewport_y)
-		if y_pos >= -tile_size/2 && y_pos < app.win_size.height {
+		if y_pos >= -tile_size && y_pos < app.win_size.height {
 			for x, slime in line {
 				if slime {
 					x_pos := f32(x*tile_size+1+app.viewport_x)
-					if x_pos >= -tile_size/2 && x_pos < app.win_size.width {
+					if x_pos >= -tile_size && x_pos < app.win_size.width {
 						app.gg.draw_rounded_rect_filled(x_pos, y_pos, tile_size-2, tile_size-2, 5, gx.red)
 					}
 				}
@@ -120,18 +142,17 @@ fn on_frame(mut app App) {
 	}
 	for y, line in app.tl {
 		y_pos := f32(-y*tile_size+1+app.viewport_y)
-		if y_pos >= -tile_size/2 && y_pos < app.win_size.height {
+		if y_pos >= -tile_size && y_pos < app.win_size.height {
 			for x, slime in line {
 				if slime {
 					x_pos := f32((-x-1)*tile_size+1+app.viewport_x)
-					if x_pos >= -tile_size/2 && x_pos < app.win_size.width {
+					if x_pos >= -tile_size && x_pos < app.win_size.width {
 						app.gg.draw_rounded_rect_filled(x_pos, y_pos, tile_size-2, tile_size-2, 5, gx.red)
 					}
 				}
 			}
 		}
 	}
-    app.gg.end()
 }
 
 fn on_event(e &gg.Event, mut app App){
@@ -145,24 +166,31 @@ fn on_event(e &gg.Event, mut app App){
 		.mouse_down {
             match e.mouse_button{
                 .left{
+					app.clicked = true
 					app.click(e.mouse_x, e.mouse_y)
 				}
                 else{}
-        }}
+        	}
+		}
         .mouse_up {
             match e.mouse_button{
                 .left{
+					app.clicked = false
 					app.pos(e.mouse_x, e.mouse_y)
 				}
                 else{}
-        }}
+        	}
+		}
         else {}
     }
+	app.mouse_x = e.mouse_x
+	app.mouse_y = e.mouse_y
 }
 
 fn (mut app App) click(x f32, y f32) {
 	app.click_x = x
 	app.click_y = y
+	app.block_click_x, app.block_click_y = app.mouse_coord_to_block_coord()
 	if m.floor((x-app.viewport_x)/tile_size) >= 0 {
 		app.r = true
 		if m.floor((y-app.viewport_y)/tile_size-1) >= 0 {
@@ -186,6 +214,35 @@ fn (mut app App) click(x f32, y f32) {
 			app.base_click_y = m.floor(-(y-app.viewport_y)/tile_size+1)
 		}
 	}
+}
+
+fn (mut app App) highlights() {
+	if app.clicked {
+		// Start block
+		start_coo_x := f32(app.block_click_x*tile_size+tile_size*0.5+app.viewport_x)
+		start_coo_y := f32(app.block_click_y*tile_size+tile_size*0.5+app.viewport_y)
+		// End block
+		mut end_block_x, mut end_block_y := app.block_click_x, app.block_click_y //app.mouse_coord_to_block_coord()
+		
+		if (app.click_x - app.mouse_x)*(app.click_x - app.mouse_x) + (app.click_y - app.mouse_y)*(app.click_y - app.mouse_y) > tile_size*tile_size {
+			if (app.click_y - app.mouse_y) > m.abs(app.click_x - app.mouse_x) { // direction -> up
+				end_block_y -= 2
+			} else if (app.mouse_y - app.click_y) > m.abs(app.click_x - app.mouse_x) { // direction -> down
+				end_block_y += 2
+			} else if (app.click_x - app.mouse_x) > m.abs(app.click_y - app.mouse_y) { // direction -> left
+				end_block_x -= 2
+			} else if (app.mouse_x - app.click_x) > m.abs(app.click_y - app.mouse_y) { // direction -> right
+				end_block_x += 2
+			}
+			end_x := f32(end_block_x*tile_size+tile_size*0.5+app.viewport_x)
+			end_y := f32(end_block_y*tile_size+tile_size*0.5+app.viewport_y)
+			app.gg.draw_line_with_config(end_x, end_y, start_coo_x, start_coo_y, gg.PenConfig {gx.Color{0, 255, 0, 255}, .solid, 10})
+		}
+	}
+}
+
+fn (mut app App) mouse_coord_to_block_coord() (f64, f64) {
+	return m.floor((app.mouse_x - app.viewport_x)/tile_size), m.floor((app.mouse_y - app.viewport_y)/tile_size)
 }
 
 fn (mut app App) pos(x f32, y f32) {
@@ -404,7 +461,7 @@ fn (mut app App) pos(x f32, y f32) {
 					}
 				}
 			}
-		} else if (x - app.click_x) > m.abs(app.click_y - y) { // direction -> right // TODO
+		} else if (x - app.click_x) > m.abs(app.click_y - y) { // direction -> right
 			if app.r { // right
 				if app.b {
 					if app.br.len > int(app.base_click_y) && app.br[int(app.base_click_y)].len > int(app.base_click_x) + 2 { // check de pas avoir le click en dehors de l'array 
