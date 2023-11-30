@@ -5,7 +5,6 @@ import math as m
 
 /*
 TODO:
-- refaire la fonciton de déplacement
 - énergie -> recharge -> dépenses
 - déplacement cavalier (d'abord mangeage extérieur puis possibilité mangeage intérrieur)
 - save
@@ -35,6 +34,12 @@ enum ArrayType {
 	br
 }
 
+enum Direction{
+	up
+	down
+	left
+	right
+}
 
 struct App {
 mut:
@@ -224,8 +229,12 @@ fn (mut app App) click(x f32, y f32) {
 }
 
 fn (app App) check_array_occuped_from_block_coords(i_x f64, i_y f64) bool{
-	a_type, x, y := block_to_array_coords(i_x, i_y) or {return false}
-	match a_type {
+	atype, x, y := block_to_array_coords(i_x, i_y) or {return false}
+	return app.check_array_occuped_in(atype, x, y)
+}
+
+fn (app App) check_array_occuped_in(atype ArrayType, x f64, y f64) bool {
+	match atype {
 		.tl {return app.tl[int(y)][int(x)]}
 		.tr {return app.tr[int(y)][int(x)]}
 		.br {return app.br[int(y)][int(x)]}
@@ -234,7 +243,7 @@ fn (app App) check_array_occuped_from_block_coords(i_x f64, i_y f64) bool{
 }
 
 fn block_to_array_coords(x f64, y f64) !(ArrayType, f64, f64) { // make the bound checking too
-	if x < 100 && y < 100 {
+	if x*x < 10000 && y*y < 10000 {
 		if x >= 0 { // r true
 			if y > 0 { // b true
 				return ArrayType.br, x, y-1
@@ -294,293 +303,49 @@ fn (mut app App) mouse_coord_to_block_coord() (f64, f64) {
 	return m.floor((app.mouse_x - app.viewport_x)/tile_size), m.floor((app.mouse_y - app.viewport_y)/tile_size)
 }
 
+fn (mut app App) place_in(atype ArrayType, x f64, y f64, value bool) {
+	match atype {
+		.tl {app.tl[int(y)][int(x)] = value}
+		.tr {app.tr[int(y)][int(x)] = value}
+		.br {app.br[int(y)][int(x)] = value}
+		.bl {app.bl[int(y)][int(x)] = value}
+	}
+}
+
+fn (mut app App) cardinal_mvts(x1 int, y1 int, x2 int, y2 int) {  // xs and ys in block coords
+	start_atype, start_x, start_y := block_to_array_coords(app.block_click_x, app.block_click_y) or {return}
+	if app.check_array_occuped_in(start_atype, start_x, start_y) {
+		stack_atype, stack_x, stack_y := block_to_array_coords(app.block_click_x+x1, app.block_click_y+y1) or {return}
+		if app.check_array_occuped_in(stack_atype, stack_x, stack_y) {
+			end_atype, end_x, end_y := block_to_array_coords(app.block_click_x+x2, app.block_click_y+y2) or {return}
+			if !app.check_array_occuped_in(end_atype, end_x, end_y) {
+				app.place_in(start_atype, start_x, start_y, false)
+				app.place_in(stack_atype, stack_x, stack_y, false)
+				app.place_in(end_atype, end_x, end_y, true)
+			}
+		}
+	}
+}
+
+fn (mut app App) mvt_towards(dir Direction) {
+	match dir {
+		.up {app.cardinal_mvts(0, -1, 0, -2)}
+		.down{app.cardinal_mvts(0, 1, 0, 2)}
+		.left{app.cardinal_mvts(-1, 0, -2, 0)}
+		.right{app.cardinal_mvts(1, 0, 2, 0)}
+	}
+}
+
 fn (mut app App) pos(x f32, y f32) {
 	if (app.click_x - x)*(app.click_x - x) + (app.click_y - y)*(app.click_y - y) > tile_size*tile_size {
 		if (app.click_y - y) > m.abs(app.click_x - x) { // direction -> up
-			if app.r { // right
-				if app.b {
-					if app.br.len > int(app.base_click_y) && app.br[int(app.base_click_y)].len > int(app.base_click_x) { // check de pas avoir le click en dehors de l'array 
-						if int(app.base_click_y) - 2 >= 0 {
-							if !app.br[int(app.base_click_y)-2][int(app.base_click_x)] && app.br[int(app.base_click_y)][int(app.base_click_x)] && app.br[int(app.base_click_y)-1][int(app.base_click_x)] {
-								app.br[int(app.base_click_y)][int(app.base_click_x)] = false
-								app.br[int(app.base_click_y)-1][int(app.base_click_x)] = false
-								app.br[int(app.base_click_y)-2][int(app.base_click_x)] = true
-							}
-						}else{
-							if int(app.base_click_y) - 1 >= 0 {
-								if app.br[int(app.base_click_y)][int(app.base_click_x)] && app.br[int(app.base_click_y)-1][int(app.base_click_x)] && !app.tr[0][int(app.base_click_x)] {
-									app.br[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.br[int(app.base_click_y)-1][int(app.base_click_x)] = false
-									app.tr[0][int(app.base_click_x)] = true 
-								}
-							} else {
-								if app.br[int(app.base_click_y)][int(app.base_click_x)] && app.tr[0][int(app.base_click_x)] && !app.tr[1][int(app.base_click_x)] {
-									app.br[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.tr[0][int(app.base_click_x)] = false
-									app.tr[1][int(app.base_click_x)] = true 
-								}
-							}
-
-						}
-					}
-				} else {
-					if app.tr.len > int(app.base_click_y) + 2 && app.tr[int(app.base_click_y)].len > int(app.base_click_x) {
-						if app.tr[int(app.base_click_y)][int(app.base_click_x)] && app.tr[int(app.base_click_y)+1][int(app.base_click_x)] && !app.tr[int(app.base_click_y)+2][int(app.base_click_x)] {
-							app.tr[int(app.base_click_y)][int(app.base_click_x)] = false
-							app.tr[int(app.base_click_y)+1][int(app.base_click_x)] = false
-							app.tr[int(app.base_click_y)+2][int(app.base_click_x)] = true
-						}
-					}
-				}
-			} else { // left side
-				if app.b {
-					if app.bl.len > int(app.base_click_y) && app.bl[int(app.base_click_y)].len > int(app.base_click_x) {
-						if int(app.base_click_y) - 2 >= 0 {
-							if !app.bl[int(app.base_click_y)-2][int(app.base_click_x)] && app.bl[int(app.base_click_y)][int(app.base_click_x)] && app.bl[int(app.base_click_y)-1][int(app.base_click_x)] {
-								app.bl[int(app.base_click_y)][int(app.base_click_x)] = false
-								app.bl[int(app.base_click_y)-1][int(app.base_click_x)] = false
-								app.bl[int(app.base_click_y)-2][int(app.base_click_x)] = true
-							}
-						}else{
-							if int(app.base_click_y) - 1 >= 0 {
-								if app.bl[int(app.base_click_y)][int(app.base_click_x)] && app.bl[int(app.base_click_y)-1][int(app.base_click_x)] && !app.tl[0][int(app.base_click_x)] {
-									app.bl[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.bl[int(app.base_click_y)-1][int(app.base_click_x)] = false
-									app.tl[0][int(app.base_click_x)] = true 
-								}
-							} else {
-								if app.bl[int(app.base_click_y)][int(app.base_click_x)] && app.tl[0][int(app.base_click_x)] && !app.tl[1][int(app.base_click_x)] {
-									app.bl[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.tl[0][int(app.base_click_x)] = false
-									app.tl[1][int(app.base_click_x)] = true 
-								}
-							}
-						}
-					}
-				} else {
-					if app.tl.len > int(app.base_click_y) + 2 && app.tl[int(app.base_click_y)].len > int(app.base_click_x) {
-						if app.tl[int(app.base_click_y)][int(app.base_click_x)] && app.tl[int(app.base_click_y)+1][int(app.base_click_x)] && !app.tl[int(app.base_click_y)+2][int(app.base_click_x)] {
-							app.tl[int(app.base_click_y)][int(app.base_click_x)] = false
-							app.tl[int(app.base_click_y)+1][int(app.base_click_x)] = false
-							app.tl[int(app.base_click_y)+2][int(app.base_click_x)] = true
-						}
-					}
-				}
-			}
+			app.mvt_towards(Direction.up)
 		} else if (y - app.click_y) > m.abs(app.click_x - x) { // direction -> down
-			if app.r { // right
-				if !app.b {
-					if app.tr.len > int(app.base_click_y) && app.tr[int(app.base_click_y)].len > int(app.base_click_x) { // check de pas avoir le click en dehors de l'array 
-						if int(app.base_click_y) - 2 >= 0 {
-							if !app.tr[int(app.base_click_y)-2][int(app.base_click_x)] && app.tr[int(app.base_click_y)][int(app.base_click_x)] && app.tr[int(app.base_click_y)-1][int(app.base_click_x)] {
-								app.tr[int(app.base_click_y)][int(app.base_click_x)] = false
-								app.tr[int(app.base_click_y)-1][int(app.base_click_x)] = false
-								app.tr[int(app.base_click_y)-2][int(app.base_click_x)] = true
-							}
-						}else{
-							if int(app.base_click_y) - 1 >= 0 {
-								if app.tr[int(app.base_click_y)][int(app.base_click_x)] && app.tr[int(app.base_click_y)-1][int(app.base_click_x)] && !app.br[0][int(app.base_click_x)] {
-									app.tr[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.tr[int(app.base_click_y)-1][int(app.base_click_x)] = false
-									app.br[0][int(app.base_click_x)] = true 
-								}
-							} else {
-								if app.tr[int(app.base_click_y)][int(app.base_click_x)] && app.br[0][int(app.base_click_x)] && !app.br[1][int(app.base_click_x)] {
-									app.tr[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.br[0][int(app.base_click_x)] = false
-									app.br[1][int(app.base_click_x)] = true 
-								}
-							}
-
-						}
-					}
-				} else {
-					if app.br.len > int(app.base_click_y) + 2 && app.br[int(app.base_click_y)].len > int(app.base_click_x) {
-						if app.br[int(app.base_click_y)][int(app.base_click_x)] && app.br[int(app.base_click_y)+1][int(app.base_click_x)] && !app.br[int(app.base_click_y)+2][int(app.base_click_x)] {
-							app.br[int(app.base_click_y)][int(app.base_click_x)] = false
-							app.br[int(app.base_click_y)+1][int(app.base_click_x)] = false
-							app.br[int(app.base_click_y)+2][int(app.base_click_x)] = true
-						}
-					}
-				}
-			} else { // left side
-				if !app.b {
-					if app.tl.len > int(app.base_click_y) && app.tl[int(app.base_click_y)].len > int(app.base_click_x) {
-						if int(app.base_click_y) - 2 >= 0 {
-							if !app.tl[int(app.base_click_y)-2][int(app.base_click_x)] && app.tl[int(app.base_click_y)][int(app.base_click_x)] && app.tl[int(app.base_click_y)-1][int(app.base_click_x)] {
-								app.tl[int(app.base_click_y)][int(app.base_click_x)] = false
-								app.tl[int(app.base_click_y)-1][int(app.base_click_x)] = false
-								app.tl[int(app.base_click_y)-2][int(app.base_click_x)] = true
-							}
-						}else{
-							if int(app.base_click_y) - 1 >= 0 {
-								if app.tl[int(app.base_click_y)][int(app.base_click_x)] && app.tl[int(app.base_click_y)-1][int(app.base_click_x)] && !app.bl[0][int(app.base_click_x)] {
-									app.tl[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.tl[int(app.base_click_y)-1][int(app.base_click_x)] = false
-									app.bl[0][int(app.base_click_x)] = true 
-								}
-							} else {
-								if app.tl[int(app.base_click_y)][int(app.base_click_x)] && app.bl[0][int(app.base_click_x)] && !app.bl[1][int(app.base_click_x)] {
-									app.tl[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.bl[0][int(app.base_click_x)] = false
-									app.bl[1][int(app.base_click_x)] = true 
-								}
-							}
-						}
-					}
-				} else {
-					if app.bl.len > int(app.base_click_y)+2 && app.bl[int(app.base_click_y)].len > int(app.base_click_x) {
-						if app.bl[int(app.base_click_y)][int(app.base_click_x)] && app.bl[int(app.base_click_y)+1][int(app.base_click_x)] && !app.bl[int(app.base_click_y)+2][int(app.base_click_x)] {
-							app.bl[int(app.base_click_y)][int(app.base_click_x)] = false
-							app.bl[int(app.base_click_y)+1][int(app.base_click_x)] = false
-							app.bl[int(app.base_click_y)+2][int(app.base_click_x)] = true
-						}
-					}
-				}
-			}
+			app.mvt_towards(Direction.down)
 		} else if (app.click_x - x) > m.abs(app.click_y - y) { // direction -> left
-			if app.r {
-				if app.b {
-					if app.br.len > int(app.base_click_y) && app.br[int(app.base_click_y)].len > int(app.base_click_x) { // check de pas avoir le click en dehors de l'array 
-						if int(app.base_click_x) - 2 >= 0 {
-							if app.br[int(app.base_click_y)][int(app.base_click_x)] && app.br[int(app.base_click_y)][int(app.base_click_x)-1] && !app.br[int(app.base_click_y)][int(app.base_click_x)-2]{
-								app.br[int(app.base_click_y)][int(app.base_click_x)] = false
-								app.br[int(app.base_click_y)][int(app.base_click_x)-1] = false
-								app.br[int(app.base_click_y)][int(app.base_click_x)-2] = true
-							}
-						}else{
-							if int(app.base_click_x) - 1 >= 0 {
-								if app.br[int(app.base_click_y)][int(app.base_click_x)] && app.br[int(app.base_click_y)][int(app.base_click_x)-1] && !app.bl[int(app.base_click_y)][0] {
-									app.br[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.br[int(app.base_click_y)][int(app.base_click_x)-1] = false
-									app.bl[int(app.base_click_y)][0] = true 
-								}
-							} else {
-								if app.br[int(app.base_click_y)][int(app.base_click_x)] && app.bl[int(app.base_click_y)][0] && !app.bl[int(app.base_click_y)][1] {
-									app.br[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.bl[int(app.base_click_y)][0] = false
-									app.bl[int(app.base_click_y)][1] = true 
-								}
-							}
-
-						}
-					}
-				} else {
-					if app.tr.len > int(app.base_click_y) && app.tr[int(app.base_click_y)].len > int(app.base_click_x) {
-						if int(app.base_click_x) - 2 >= 0 {
-							if !app.tr[int(app.base_click_y)][int(app.base_click_x)-2] && app.tr[int(app.base_click_y)][int(app.base_click_x)] && app.tr[int(app.base_click_y)][int(app.base_click_x)-1] {
-								app.tr[int(app.base_click_y)][int(app.base_click_x)] = false
-								app.tr[int(app.base_click_y)][int(app.base_click_x)-1] = false
-								app.tr[int(app.base_click_y)][int(app.base_click_x)-2] = true
-							}
-						}else{
-							if int(app.base_click_x) - 1 >= 0 {
-								if app.tr[int(app.base_click_y)][int(app.base_click_x)] && app.tr[int(app.base_click_y)][int(app.base_click_x)-1] && !app.tl[int(app.base_click_y)][0] {
-									app.tr[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.tr[int(app.base_click_y)][int(app.base_click_x)-1] = false
-									app.tl[int(app.base_click_y)][0] = true 
-								}
-							} else {
-								if app.tr[int(app.base_click_y)][int(app.base_click_x)] && app.tl[int(app.base_click_y)][0] && !app.tl[int(app.base_click_y)][1] {
-									app.tr[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.tl[int(app.base_click_y)][0] = false
-									app.tl[int(app.base_click_y)][1] = true 
-								}
-							}
-
-						}
-					}
-				}
-			} else { // left side
-				if app.b {
-					if app.bl.len > int(app.base_click_y) && app.bl[int(app.base_click_y)].len > int(app.base_click_x) + 2 {
-						if app.bl[int(app.base_click_y)][int(app.base_click_x)] && app.bl[int(app.base_click_y)][int(app.base_click_x)+1] && !app.bl[int(app.base_click_y)][int(app.base_click_x)+2] {
-							app.bl[int(app.base_click_y)][int(app.base_click_x)] = false
-							app.bl[int(app.base_click_y)][int(app.base_click_x)+1] = false
-							app.bl[int(app.base_click_y)][int(app.base_click_x)+2] = true
-						}
-					}
-				} else {
-					if app.tl.len > int(app.base_click_y) && app.tl[int(app.base_click_y)].len > int(app.base_click_x) + 2 {
-						if app.tl[int(app.base_click_y)][int(app.base_click_x)] && app.tl[int(app.base_click_y)][int(app.base_click_x)+1] && !app.tl[int(app.base_click_y)][int(app.base_click_x)+2] {
-							app.tl[int(app.base_click_y)][int(app.base_click_x)] = false
-							app.tl[int(app.base_click_y)][int(app.base_click_x)+1] = false
-							app.tl[int(app.base_click_y)][int(app.base_click_x)+2] = true
-						}
-					}
-				}
-			}
+			app.mvt_towards(Direction.left)
 		} else if (x - app.click_x) > m.abs(app.click_y - y) { // direction -> right
-			if app.r { // right
-				if app.b {
-					if app.br.len > int(app.base_click_y) && app.br[int(app.base_click_y)].len > int(app.base_click_x) + 2 { // check de pas avoir le click en dehors de l'array 
-						if app.br[int(app.base_click_y)][int(app.base_click_x)] && app.br[int(app.base_click_y)][int(app.base_click_x)+1] && !app.br[int(app.base_click_y)][int(app.base_click_x)+2] {
-							app.br[int(app.base_click_y)][int(app.base_click_x)] = false
-							app.br[int(app.base_click_y)][int(app.base_click_x)+1] = false
-							app.br[int(app.base_click_y)][int(app.base_click_x)+2] = true
-						}
-					}
-				} else {
-					if app.tr.len > int(app.base_click_y) && app.tr[int(app.base_click_y)].len > int(app.base_click_x) + 2 { // check de pas avoir le click en dehors de l'array 
-						if app.tr[int(app.base_click_y)][int(app.base_click_x)] && app.tr[int(app.base_click_y)][int(app.base_click_x)+1] && !app.tr[int(app.base_click_y)][int(app.base_click_x)+2] {
-							app.tr[int(app.base_click_y)][int(app.base_click_x)] = false
-							app.tr[int(app.base_click_y)][int(app.base_click_x)+1] = false
-							app.tr[int(app.base_click_y)][int(app.base_click_x)+2] = true
-						}
-					}
-				}
-			} else { // left side
-				if !app.b {
-					if app.tl.len > int(app.base_click_y) && app.tl[int(app.base_click_y)].len > int(app.base_click_x) {
-						if int(app.base_click_x) - 2 >= 0 {
-							if app.tl[int(app.base_click_y)][int(app.base_click_x)] && app.tl[int(app.base_click_y)][int(app.base_click_x)-1] && !app.tl[int(app.base_click_y)][int(app.base_click_x)-2]{
-								app.tl[int(app.base_click_y)][int(app.base_click_x)] = false
-								app.tl[int(app.base_click_y)][int(app.base_click_x)-1] = false
-								app.tl[int(app.base_click_y)][int(app.base_click_x)-2] = true
-							}
-						}else{
-							if int(app.base_click_x) - 1 >= 0 {
-								if app.tl[int(app.base_click_y)][int(app.base_click_x)] && app.tl[int(app.base_click_y)][int(app.base_click_x)-1] && !app.tr[int(app.base_click_y)][0] {
-									app.tl[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.tl[int(app.base_click_y)][int(app.base_click_x)-1] = false
-									app.tr[int(app.base_click_y)][0] = true 
-								}
-							} else {
-								if app.tl[int(app.base_click_y)][int(app.base_click_x)] && app.tr[int(app.base_click_y)][0] && !app.tr[int(app.base_click_y)][1] {
-									app.tl[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.tr[int(app.base_click_y)][0] = false
-									app.tr[int(app.base_click_y)][1] = true 
-								}
-							}
-
-						}
-					}
-				} else {
-					if app.bl.len > int(app.base_click_y) && app.bl[int(app.base_click_y)].len > int(app.base_click_x) {
-						if int(app.base_click_x) - 2 >= 0 {
-							if app.bl[int(app.base_click_y)][int(app.base_click_x)] && app.bl[int(app.base_click_y)][int(app.base_click_x)-1] && !app.bl[int(app.base_click_y)][int(app.base_click_x)-2]{
-								app.bl[int(app.base_click_y)][int(app.base_click_x)] = false
-								app.bl[int(app.base_click_y)][int(app.base_click_x)-1] = false
-								app.bl[int(app.base_click_y)][int(app.base_click_x)-2] = true
-							}
-						}else{
-							if int(app.base_click_x) - 1 >= 0 {
-								if app.bl[int(app.base_click_y)][int(app.base_click_x)] && app.bl[int(app.base_click_y)][int(app.base_click_x)-1] && !app.br[int(app.base_click_y)][0] {
-									app.bl[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.bl[int(app.base_click_y)][int(app.base_click_x)-1] = false
-									app.br[int(app.base_click_y)][0] = true 
-								}
-							} else {
-								if app.bl[int(app.base_click_y)][int(app.base_click_x)] && app.br[int(app.base_click_y)][0] && !app.br[int(app.base_click_y)][1] {
-									app.bl[int(app.base_click_y)][int(app.base_click_x)] = false
-									app.br[int(app.base_click_y)][0] = false
-									app.br[int(app.base_click_y)][1] = true 
-								}
-							}
-						}
-					}
-				}
-			}
+			app.mvt_towards(Direction.right)
 		}
 	}
 }
