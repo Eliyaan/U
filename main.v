@@ -6,24 +6,25 @@ import math as m
 
 /*
 TODO:
-- déplacement cavalier intérrieur
+- Juice icone énergie qui boing, dezoom, zoom (image draw call)
 - save
-- Juice icone énergie qui boing, slimes qui touing, dezoom, zoom (image draw call)
-- autre déplacements ?
-- voir pour les niveaux requis etc
 - macros
+-> affichage de la macro selectionnée
 -> taille canva macro
--> position requise
--> déplacements (basique, cavale cavale ...)
 -> save
+- autre déplacements ?
+
 - lvl des slimes (combien ils en ont stack) (changement alpha)
+- voir pour les niveaux requis etc
+- macros lvls requis
 - débloque 1 nouvelle couleur par ligne
 */
 
 const white = gx.white
 const gray = gx.Color{229, 236, 236, 255}
 const tile_size = 90
-const tile_color = gx.Color{128, 128, 128, 255}
+const semi_space = 5
+const slime_size = tile_size - semi_space*2
 const valid_text_cfg = gx.TextCfg{
 	color: gx.green
 	size: 30
@@ -33,7 +34,15 @@ const valid_text_cfg = gx.TextCfg{
 	family: 'agency fb'
 }
 const energy_text_cfg = gx.TextCfg{
-	color: gx.orange
+	color: gx.Color{255, 204, 0, 255}
+	size: 45
+	align: .left
+	vertical_align: .top
+	bold: true
+	family: 'agency fb'
+}
+const energy_gain_cfg = gx.TextCfg{
+	color: gx.Color{255, 233, 71, 255}
 	size: 30
 	align: .left
 	vertical_align: .top
@@ -45,6 +54,22 @@ const invalid_text_cfg = gx.TextCfg{
 	size: 30
 	align: .left
 	vertical_align: .top
+	bold: true
+	family: 'agency fb'
+}
+const u_logo_cfg = gx.TextCfg{
+	color: gx.Color{249, 226, 175, 100}
+	size: 620
+	align: .center
+	vertical_align: .middle
+	bold: true
+	family: 'agency fb'
+}
+const macro_mode_cfg = gx.TextCfg{
+	color: gx.Color{0, 198, 68, 200}
+	size: 40
+	align: .center
+	vertical_align: .middle
 	bold: true
 	family: 'agency fb'
 }
@@ -70,6 +95,20 @@ enum Direction {
 	frontcav_leftd
 	frontcav_rightu
 	frontcav_rightd
+	extcav_upl
+	extcav_upr
+	extcav_downl
+	extcav_downr
+	extcav_leftu
+	extcav_leftd
+	extcav_rightu
+	extcav_rightd
+}
+
+struct MacroMove {
+	rel_x int // relative x
+	rel_y int
+	dir Direction
 }
 
 struct App {
@@ -97,6 +136,9 @@ mut:
 	tr                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: false}}
 	bl                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: true}}
 	br                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: true}}
+	macros_spaces [][][]bool = [[[true], [true], [false]]]
+	macros_moves [][]MacroMove = [[MacroMove{0, 0, .up}]]
+	macro_mode bool
 }
 
 fn main() {
@@ -138,6 +180,7 @@ fn on_frame(mut app App) {
 	}
 	// Draw
 	app.gg.begin()
+	app.gg.draw_text(app.win_size.width/2, app.win_size.height/2, 'U', u_logo_cfg)
 	app.draw_slimes()
 	app.highlights()
 	mut total_new_ener := 0.0
@@ -147,11 +190,16 @@ fn on_frame(mut app App) {
 			app.energy += new_ener
 			total_new_ener += new_ener
 			app.gg.draw_text(10, int((-i) * tile_size + 1 + app.viewport_y), '${m.round_sig(new_ener * 60,
-				2)}/s  (${nb_slimes} / ${i + 1})', energy_text_cfg)
+				2)}/s  (${nb_slimes} / ${i + 1})', energy_gain_cfg)
 		}
 	}
-	app.gg.draw_text(0, 0, '${m.round_sig(app.energy, 1)} (+ ${m.round_sig(total_new_ener * 60,
-		1)}/s)', energy_text_cfg)
+	if app.macro_mode {
+		tmpx, tmpy := app.mouse_coord_to_block_coord()
+		x, y := app.block_to_world_coords(tmpx, tmpy)
+		app.gg.draw_text(int(x), int(y), 'M', macro_mode_cfg)
+	}
+	
+	app.gg.draw_text(15, 15, '${m.round_sig(app.energy, 1)} (+ ${m.round_sig(total_new_ener * 60, 1)}/s)', energy_text_cfg)
 	app.gg.end()
 }
 
@@ -159,6 +207,7 @@ fn on_event(e &gg.Event, mut app App) {
 	match e.typ {
 		.key_down {
 			match e.key_code {
+				.p { app.macro_mode = !app.macro_mode}
 				.escape {
 					app.gg.quit()
 				}
@@ -190,8 +239,12 @@ fn on_event(e &gg.Event, mut app App) {
 		.mouse_down {
 			match e.mouse_button {
 				.left {
-					app.clicked = true
-					app.click(e.mouse_x, e.mouse_y)
+					if app.macro_mode {
+
+					}else{
+						app.clicked = true
+						app.click(e.mouse_x, e.mouse_y)
+					}
 				}
 				else {}
 			}
@@ -199,8 +252,12 @@ fn on_event(e &gg.Event, mut app App) {
 		.mouse_up {
 			match e.mouse_button {
 				.left {
-					app.clicked = false
-					app.move(e.mouse_x, e.mouse_y)
+					if app.macro_mode {
+						app.check_macro_valid(0)
+					}else{
+						app.clicked = false
+						app.move(e.mouse_x, e.mouse_y)
+					}
 				}
 				else {}
 			}
@@ -209,4 +266,22 @@ fn on_event(e &gg.Event, mut app App) {
 	}
 	app.mouse_x = e.mouse_x
 	app.mouse_y = e.mouse_y
+}
+
+fn (mut app App) check_macro_valid(macro_nb int) {
+	pos_x, pos_y := app.mouse_coord_to_block_coord()
+	mut valid := true
+	outer: for y, line in app.macros_spaces[0] {
+		for x, value in line {
+			if value != app.check_array_occuped_from_block_coords(pos_x + x, pos_y - y) {
+				valid = false
+				break outer
+			}
+		}
+	}
+	for a_movem in app.macros_moves {
+		for movem in a_movem {
+			app.mvt_towards(movem.dir, int(pos_x + movem.rel_x), int(pos_y + movem.rel_y))
+		}
+	}
 }
