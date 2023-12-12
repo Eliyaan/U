@@ -9,7 +9,7 @@ TODO:
 - Juice icone énergie qui boing, dezoom, zoom (image draw call)
 - save
 - macros
--> affichage de la macro selectionnée
+-> calcul coût macro
 -> taille canva macro
 -> save
 - autre déplacements ?
@@ -27,6 +27,14 @@ const semi_space = 5
 const slime_size = tile_size - semi_space*2
 const valid_text_cfg = gx.TextCfg{
 	color: gx.green
+	size: 30
+	align: .left
+	vertical_align: .top
+	bold: true
+	family: 'agency fb'
+}
+const gray_text_cfg = gx.TextCfg{
+	color: gx.gray
 	size: 30
 	align: .left
 	vertical_align: .top
@@ -107,7 +115,7 @@ enum Direction {
 
 struct MacroMove {
 	rel_x int // relative x
-	rel_y int
+	rel_y int // positive is up
 	dir Direction
 }
 
@@ -136,8 +144,8 @@ mut:
 	tr                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: false}}
 	bl                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: true}}
 	br                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: true}}
-	macros_spaces [][][]bool = [[[true], [true], [false]]]
-	macros_moves [][]MacroMove = [[MacroMove{0, 0, .up}]]
+	macros_spaces [][][]int = [[[-1, 1], [1, -1], [0, -1]]]
+	macros_moves [][]MacroMove = [[MacroMove{1, 0, .extcav_upl}]]
 	macro_mode bool
 }
 
@@ -194,9 +202,7 @@ fn on_frame(mut app App) {
 		}
 	}
 	if app.macro_mode {
-		tmpx, tmpy := app.mouse_coord_to_block_coord()
-		x, y := app.block_to_world_coords(tmpx, tmpy)
-		app.gg.draw_text(int(x), int(y), 'M', macro_mode_cfg)
+		app.show_actual_macro()
 	}
 	
 	app.gg.draw_text(15, 15, '${m.round_sig(app.energy, 1)} (+ ${m.round_sig(total_new_ener * 60, 1)}/s)', energy_text_cfg)
@@ -268,20 +274,3 @@ fn on_event(e &gg.Event, mut app App) {
 	app.mouse_y = e.mouse_y
 }
 
-fn (mut app App) check_macro_valid(macro_nb int) {
-	pos_x, pos_y := app.mouse_coord_to_block_coord()
-	mut valid := true
-	outer: for y, line in app.macros_spaces[0] {
-		for x, value in line {
-			if value != app.check_array_occuped_from_block_coords(pos_x + x, pos_y - y) {
-				valid = false
-				break outer
-			}
-		}
-	}
-	for a_movem in app.macros_moves {
-		for movem in a_movem {
-			app.mvt_towards(movem.dir, int(pos_x + movem.rel_x), int(pos_y + movem.rel_y))
-		}
-	}
-}
