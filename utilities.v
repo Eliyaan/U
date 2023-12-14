@@ -46,21 +46,4 @@ fn (mut app App) click(x f32, y f32) {
 	app.click_x = x
 	app.click_y = y
 	app.block_click_x, app.block_click_y = app.mouse_coord_to_block_coord()
-	if m.floor((x - app.viewport_x) / tile_size) >= 0 {
-		if m.floor((y - app.viewport_y) / tile_size - 1) >= 0 {
-			app.base_click_x = m.floor((x - app.viewport_x) / tile_size)
-			app.base_click_y = m.floor((y - app.viewport_y) / tile_size - 1)
-		} else {
-			app.base_click_x = m.floor((x - app.viewport_x) / tile_size)
-			app.base_click_y = m.floor(-(y - app.viewport_y) / tile_size + 1)
-		}
-	} else {
-		if m.floor((y - app.viewport_y) / tile_size - 1) >= 0 {
-			app.base_click_x = m.floor(-(x - app.viewport_x) / tile_size)
-			app.base_click_y = m.floor((y - app.viewport_y) / tile_size - 1)
-		} else {
-			app.base_click_x = m.floor(-(x - app.viewport_x) / tile_size)
-			app.base_click_y = m.floor(-(y - app.viewport_y) / tile_size + 1)
-		}
-	}
 }

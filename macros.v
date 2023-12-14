@@ -1,10 +1,20 @@
 import gg
 import gx
 
-fn (mut app App) check_macro_valid(macro_nb int) {
+fn (mut app App) cout_macro() f64 {
+	_, pos_y := app.mouse_coord_to_block_coord()
+	mut cout := 0
+	for mvt in app.macros_moves[app.actual_macro] {
+		_, _, _, end_y := get_move_from_dir(mvt.dir)
+		cout += cout_deplacement(pos_y + end_y)
+	}
+	return cout
+}
+
+fn (mut app App) check_macro_valid() {
 	pos_x, pos_y := app.mouse_coord_to_block_coord()
 	mut valid := true
-	outer: for y, line in app.macros_spaces[0] {
+	outer: for y, line in app.macros_spaces[app.actual_macro] {
 		for x, value in line {
 			if value == 1 {
 				if !app.check_array_occuped_from_block_coords(pos_x + x, pos_y - y) {
@@ -19,6 +29,9 @@ fn (mut app App) check_macro_valid(macro_nb int) {
 			}
 		}
 	}
+	if app.cout_macro() > app.energy {
+		valid = false
+	}
 	if valid {
 		for a_movem in app.macros_moves {
 			for movem in a_movem {
@@ -32,7 +45,9 @@ fn (mut app App) show_actual_macro() {
 	tmpx, tmpy := app.mouse_coord_to_block_coord()
 	x, y := app.block_to_world_coords(tmpx, tmpy)
 	app.gg.draw_text(int(x), int(y), 'M', macro_mode_cfg)
-	for rel_y, line in app.macros_spaces[0] {
+	text_cfg := if app.cout_macro() <= app.energy {valid_macro_cfg} else {notvalid_macro_cfg}
+	app.gg.draw_text(int(x), int(y)+tile_size/2+7, '${app.cout_macro()}', text_cfg)
+	for rel_y, line in app.macros_spaces[app.actual_macro] {
 		for rel_x, value in line {
 			x2, y2 := app.block_to_world_coords(tmpx+rel_x, tmpy-rel_y)
 			if value == 1{
@@ -52,8 +67,7 @@ fn (mut app App) show_actual_macro() {
 			}			
 		}
 	}
-	for i, movem in app.macros_moves[0] {
-		// need to offset 
+	for i, movem in app.macros_moves[app.actual_macro] {
 		_, _, x2, y2 := get_move_from_dir(movem.dir)
 		line_color := gx.Color{128, 128, 128, 128}
 		start_x, start_y := app.block_to_world_coords(tmpx+movem.rel_x, tmpy-movem.rel_y)

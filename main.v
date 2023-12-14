@@ -1,153 +1,24 @@
 module main
 
+import toml
+import os
 import gg
-import gx
 import math as m
 
 /*
 TODO:
-- Juice icone énergie qui boing, dezoom, zoom (image draw call)
+- Juice icone énergie qui boing
 - save
 - macros
--> calcul coût macro
--> taille canva macro
--> save
-- autre déplacements ?
+-> nb macro
+-> bug si dépendant d'un pro mvt
 
+- autre déplacements ?
 - lvl des slimes (combien ils en ont stack) (changement alpha)
 - voir pour les niveaux requis etc
 - macros lvls requis
 - débloque 1 nouvelle couleur par ligne
 */
-
-const white = gx.white
-const gray = gx.Color{229, 236, 236, 255}
-const tile_size = 90
-const semi_space = 5
-const slime_size = tile_size - semi_space*2
-const valid_text_cfg = gx.TextCfg{
-	color: gx.green
-	size: 30
-	align: .left
-	vertical_align: .top
-	bold: true
-	family: 'agency fb'
-}
-const gray_text_cfg = gx.TextCfg{
-	color: gx.gray
-	size: 30
-	align: .left
-	vertical_align: .top
-	bold: true
-	family: 'agency fb'
-}
-const energy_text_cfg = gx.TextCfg{
-	color: gx.Color{255, 204, 0, 255}
-	size: 45
-	align: .left
-	vertical_align: .top
-	bold: true
-	family: 'agency fb'
-}
-const energy_gain_cfg = gx.TextCfg{
-	color: gx.Color{255, 233, 71, 255}
-	size: 30
-	align: .left
-	vertical_align: .top
-	bold: true
-	family: 'agency fb'
-}
-const invalid_text_cfg = gx.TextCfg{
-	color: gx.red
-	size: 30
-	align: .left
-	vertical_align: .top
-	bold: true
-	family: 'agency fb'
-}
-const u_logo_cfg = gx.TextCfg{
-	color: gx.Color{249, 226, 175, 100}
-	size: 620
-	align: .center
-	vertical_align: .middle
-	bold: true
-	family: 'agency fb'
-}
-const macro_mode_cfg = gx.TextCfg{
-	color: gx.Color{0, 198, 68, 200}
-	size: 40
-	align: .center
-	vertical_align: .middle
-	bold: true
-	family: 'agency fb'
-}
-
-enum ArrayType {
-	tl
-	tr
-	bl
-	br
-}
-
-enum Direction {
-	no
-	up
-	down
-	left
-	right
-	frontcav_upl
-	frontcav_upr
-	frontcav_downl
-	frontcav_downr
-	frontcav_leftu
-	frontcav_leftd
-	frontcav_rightu
-	frontcav_rightd
-	extcav_upl
-	extcav_upr
-	extcav_downl
-	extcav_downr
-	extcav_leftu
-	extcav_leftd
-	extcav_rightu
-	extcav_rightd
-}
-
-struct MacroMove {
-	rel_x int // relative x
-	rel_y int // positive is up
-	dir Direction
-}
-
-struct App {
-mut:
-	gg &gg.Context = unsafe { nil }
-
-	base_click_x  f64
-	base_click_y  f64
-	click_x       f64
-	click_y       f64
-	block_click_x f64
-	block_click_y f64
-	mouse_x       f64
-	mouse_y       f64
-	clicked       bool
-
-	viewport_x f64
-	viewport_y f64
-	win_size   gg.Size
-
-	energy f64 = 10
-
-	slimes_per_layers []int    = []int{len: 100}
-	tl                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: false}}
-	tr                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: false}}
-	bl                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: true}}
-	br                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: true}}
-	macros_spaces [][][]int = [[[-1, 1], [1, -1], [0, -1]]]
-	macros_moves [][]MacroMove = [[MacroMove{1, 0, .extcav_upl}]]
-	macro_mode bool
-}
 
 fn main() {
 	mut app := &App{}
@@ -162,6 +33,34 @@ fn main() {
 		sample_count: 5
 		// ui_mode: true
 	)
+	mut j := 0
+	for {
+		mut file := os.open('saves_macros/save_moves_macro$j') or { break }
+		app.macros_moves << []MacroMove{}
+		mut stru := MacroMove{}
+		for {
+			file.read_struct(mut stru) or {break}
+			app.macros_moves[j] << stru
+		}
+		file.close()
+		f := toml.parse_file('saves_macros/macrospaces$j') or { panic(err) }
+		app.macros_spaces << [][]int{}
+		for i, a in f.value('spaces').array() {
+			app.macros_spaces[j] << []int{}
+			for value in a.array() {
+				app.macros_spaces[j][i] << value.int()
+			}
+		}
+		j += 1
+	}
+
+	/*
+	mut file := os.create('save_macros') or {panic(err)}
+	file.write_struct(MacroMove{1, 0, .extcav_upl}) or {panic(err)}
+	file.write_struct(MacroMove{0, 0, .extcav_upr}) or {panic(err)}
+	file.close()
+	*/
+
 
 	// lancement du programme/de la fenêtre
 	app.gg.run()
@@ -259,13 +158,26 @@ fn on_event(e &gg.Event, mut app App) {
 			match e.mouse_button {
 				.left {
 					if app.macro_mode {
-						app.check_macro_valid(0)
+						app.check_macro_valid()
 					}else{
 						app.clicked = false
 						app.move(e.mouse_x, e.mouse_y)
 					}
 				}
 				else {}
+			}
+		}
+		.mouse_scroll {
+			if e.scroll_y > 0 {
+				app.actual_macro += 1
+				if app.actual_macro >= app.macros_moves.len {
+					app.actual_macro = app.macros_moves.len-1
+				}
+			}else{
+				app.actual_macro -= 1
+				if app.actual_macro < 0 {
+					app.actual_macro = 0
+				}
 			}
 		}
 		else {}
