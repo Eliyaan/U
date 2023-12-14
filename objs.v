@@ -55,13 +55,13 @@ mut:
 	viewport_y f64
 	win_size   gg.Size
 
-	energy f64 = 10
+	energy f64 = 10 // save
 
-	slimes_per_layers []int    = []int{len: 100}
-	tl                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: false}}
-	tr                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: false}}
-	bl                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: true}}
-	br                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: true}}
+	slimes_per_layers []int    = []int{len: 100} // save
+	tl                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: false}} // save
+	tr                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: false}} // save
+	bl                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: true}} // save
+	br                [][]bool = [][]bool{len: 100, init: []bool{len: 100, init: true}} // save
 	macros_spaces [][][]int
 	actual_macro int
 	macros_moves [][]MacroMove

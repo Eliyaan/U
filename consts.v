@@ -46,7 +46,7 @@ const energy_text_cfg = gx.TextCfg{
 	family: 'agency fb'
 }
 const energy_gain_cfg = gx.TextCfg{
-	color: gx.Color{255, 233, 71, 255}
+	color: gx.Color{225, 193, 31, 255}
 	size: 30
 	align: .left
 	vertical_align: .top

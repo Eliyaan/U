@@ -119,9 +119,7 @@ fn get_move_from_dir(dir Direction) (int, int, int, int) {
 }
 
 fn (mut app App) mvts(x1 int, y1 int, x2 int, y2 int, block_x int, block_y int) { // xs and ys in block coords
-	start_atype, start_x, start_y := block_to_array_coords(block_x, block_y) or {
-		return
-	}
+	start_atype, start_x, start_y := block_to_array_coords(block_x, block_y) or {return}
 	if app.check_array_occuped_in(start_atype, start_x, start_y) {
 		stack_atype, stack_x, stack_y := block_to_array_coords(block_x + x1,
 			block_y + y1) or { return }

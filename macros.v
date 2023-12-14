@@ -11,7 +11,7 @@ fn (mut app App) cout_macro() f64 {
 	return cout
 }
 
-fn (mut app App) check_macro_valid() {
+fn (mut app App) check_macro_valid() {  // and do it xD
 	pos_x, pos_y := app.mouse_coord_to_block_coord()
 	mut valid := true
 	outer: for y, line in app.macros_spaces[app.actual_macro] {
@@ -33,10 +33,8 @@ fn (mut app App) check_macro_valid() {
 		valid = false
 	}
 	if valid {
-		for a_movem in app.macros_moves {
-			for movem in a_movem {
-				app.mvt_towards(movem.dir, int(pos_x + movem.rel_x), int(pos_y + movem.rel_y))
-			}
+		for movem in app.macros_moves[app.actual_macro] {
+			app.mvt_towards(movem.dir, int(pos_x + movem.rel_x), int(pos_y - movem.rel_y))
 		}
 	}
 }
@@ -44,7 +42,7 @@ fn (mut app App) check_macro_valid() {
 fn (mut app App) show_actual_macro() {
 	tmpx, tmpy := app.mouse_coord_to_block_coord()
 	x, y := app.block_to_world_coords(tmpx, tmpy)
-	app.gg.draw_text(int(x), int(y), 'M', macro_mode_cfg)
+	app.gg.draw_text(int(x), int(y), 'M$app.actual_macro', macro_mode_cfg)
 	text_cfg := if app.cout_macro() <= app.energy {valid_macro_cfg} else {notvalid_macro_cfg}
 	app.gg.draw_text(int(x), int(y)+tile_size/2+7, '${app.cout_macro()}', text_cfg)
 	for rel_y, line in app.macros_spaces[app.actual_macro] {

@@ -8,11 +8,6 @@ import math as m
 /*
 TODO:
 - Juice icone énergie qui boing
-- save
-- macros
--> nb macro
--> bug si dépendant d'un pro mvt
-
 - autre déplacements ?
 - lvl des slimes (combien ils en ont stack) (changement alpha)
 - voir pour les niveaux requis etc
@@ -53,6 +48,13 @@ fn main() {
 		}
 		j += 1
 	}
+	save := toml.parse_file('state_save') or {panic(err)}
+	app.energy = save.value("energy").f64()
+	app.slimes_per_layers = save.value('slimes_per_layers').array().map(it.int())
+	app.tl = save.value('tl').array().map(it.array().map(it.bool()))
+	app.tr = save.value('tr').array().map(it.array().map(it.bool()))
+	app.bl = save.value('bl').array().map(it.array().map(it.bool()))
+	app.br = save.value('br').array().map(it.array().map(it.bool()))
 
 	/*
 	mut file := os.create('save_macros') or {panic(err)}
@@ -64,6 +66,7 @@ fn main() {
 
 	// lancement du programme/de la fenêtre
 	app.gg.run()
+	os.write_file("state_save", 'energy=$app.energy\nslimes_per_layers=$app.slimes_per_layers\ntl=$app.tl\ntr=$app.tr\nbl=$app.bl\nbr=$app.br') or {panic(err)}
 }
 
 fn on_frame(mut app App) {
