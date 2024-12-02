@@ -10,7 +10,6 @@ const gray_text_cfg = gx.TextCfg{
 	align: .left
 	vertical_align: .top
 	bold: true
-	family: 'agency fb'
 }
 const macro_mode_cfg = gx.TextCfg{
 	color: gx.Color{0, 198, 68, 200}
@@ -18,7 +17,6 @@ const macro_mode_cfg = gx.TextCfg{
 	align: .center
 	vertical_align: .middle
 	bold: true
-	family: 'agency fb'
 }
 const valid_macro_cfg = gx.TextCfg{
 	color: gx.green
@@ -26,7 +24,6 @@ const valid_macro_cfg = gx.TextCfg{
 	align: .center
 	vertical_align: .middle
 	bold: true
-	family: 'agency fb'
 }
 const notvalid_macro_cfg = gx.TextCfg{
 	color: gx.red
@@ -34,7 +31,6 @@ const notvalid_macro_cfg = gx.TextCfg{
 	align: .center
 	vertical_align: .middle
 	bold: true
-	family: 'agency fb'
 }
 
 enum Direction {
