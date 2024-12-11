@@ -4,6 +4,9 @@ A little game made for the birthday of a friend
 
 Make the slimes go as far as you can! They will produce energy to power your macros so that you can help them go even further!
 
+![image](https://github.com/user-attachments/assets/0171c908-231e-4244-9d0a-ffd1733f8693)
+
+
 Run the game : while in the U directory, run `v run .` (you need to install v first: https://github.com/vlang/v)
 
 Keybinds:
