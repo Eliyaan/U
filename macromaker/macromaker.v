@@ -1,32 +1,31 @@
 import os
 import math as m
 import gg
-import gx
 
 const tile_size = 90
-const gray_text_cfg = gx.TextCfg{
-	color: gx.gray
+const gray_text_cfg = gg.TextCfg{
+	color: gg.gray
 	size: 30
 	align: .left
 	vertical_align: .top
 	bold: true
 }
-const macro_mode_cfg = gx.TextCfg{
-	color: gx.Color{0, 198, 68, 200}
+const macro_mode_cfg = gg.TextCfg{
+	color: gg.Color{0, 198, 68, 200}
 	size: 40
 	align: .center
 	vertical_align: .middle
 	bold: true
 }
-const valid_macro_cfg = gx.TextCfg{
-	color: gx.green
+const valid_macro_cfg = gg.TextCfg{
+	color: gg.green
 	size: 30
 	align: .center
 	vertical_align: .middle
 	bold: true
 }
-const notvalid_macro_cfg = gx.TextCfg{
-	color: gx.red
+const notvalid_macro_cfg = gg.TextCfg{
+	color: gg.red
 	size: 30
 	align: .center
 	vertical_align: .middle
@@ -90,7 +89,7 @@ fn main() {
 		width: 600
 		window_title: 'U'
 		user_data: app
-		bg_color: gx.white
+		bg_color: gg.white
 		frame_fn: on_frame
 		event_fn: on_event
 		sample_count: 5
@@ -195,13 +194,13 @@ fn (mut app App) show_actual_macro() {
 			for rel_x, value in line {
 				x2, y2 := app.block_to_world_coords(tmpx+rel_x, tmpy-rel_y-1)
 				if value == 1{
-					tile_color := gx.Color{0, 255, 0, 100}
+					tile_color := gg.Color{0, 255, 0, 100}
 					app.gg.draw_rounded_rect_filled(x2 - tile_size * 0.5 + 1, y2 - tile_size * 0.5 + 1, tile_size - 2, tile_size - 2, 5, tile_color)
 				}else if value == 0 {
-					tile_color := gx.Color{255, 0, 0, 100}
+					tile_color := gg.Color{255, 0, 0, 100}
 					app.gg.draw_rounded_rect_filled(x2 - tile_size * 0.5 + 1, y2 - tile_size * 0.5 + 1, tile_size - 2, tile_size - 2, 5, tile_color)
 				}else{
-					tile_color := gx.Color{200, 200, 200, 100}
+					tile_color := gg.Color{200, 200, 200, 100}
 					app.gg.draw_rounded_rect_filled(x2 - tile_size * 0.5 + 1, y2 - tile_size * 0.5 + 1, tile_size - 2, tile_size - 2, 5, tile_color)
 				}	
 			}
@@ -209,7 +208,7 @@ fn (mut app App) show_actual_macro() {
 		if app.macros_moves.len > 0 {
 			for i, movem in app.macros_moves[0] {
 				_, _, x2, y2 := get_move_from_dir(movem.dir)
-				line_color := gx.Color{128, 128, 128, 128}
+				line_color := gg.Color{128, 128, 128, 128}
 				start_x, start_y := app.block_to_world_coords(tmpx+movem.rel_x, tmpy-movem.rel_y-1)
 				end_x, end_y := app.block_to_world_coords(tmpx+movem.rel_x+x2, tmpy-movem.rel_y+y2-1)
 				app.gg.draw_line_with_config(end_x, end_y, start_x, start_y, gg.PenConfig{line_color, .solid, 5})
@@ -239,13 +238,13 @@ fn (mut app App) highlights() {
 			if end_block_y >= 0 && end_block_x >= 0 && app.macros_spaces[0].len > app.block_click_x && app.macros_spaces[0].len > end_block_y && app.macros_spaces[0][int(end_block_y)].len > end_block_x && app.macros_spaces[0][int(end_block_y)].len > app.block_click_x {
 				end_x, end_y := app.block_to_world_coords(end_block_x, end_block_y)
 				stack_x, stack_y := app.block_to_world_coords(stack_block_x, stack_block_y)
-				outline_color := gx.green
+				outline_color := gg.green
 				app.gg.draw_rounded_rect_empty(end_x - tile_size * 0.5 + 1, end_y - tile_size * 0.5 + 1,
 					tile_size - 2, tile_size - 2, 5, outline_color)
-				stack_color := gx.green
+				stack_color := gg.green
 				app.gg.draw_rounded_rect_empty(stack_x - tile_size * 0.5 + 1,
 					stack_y - tile_size * 0.5 + 1, tile_size - 2, tile_size - 2, 5, stack_color)
-				line_color := gx.green
+				line_color := gg.green
 				app.gg.draw_line_with_config(end_x, end_y, start_coo_x, start_coo_y, gg.PenConfig{line_color, .solid, 5})
 				app.gg.draw_line_with_config(start_coo_x, start_coo_y, end_x, end_y, gg.PenConfig{line_color, .solid, 5})
 				app.gg.draw_circle_filled(end_x, end_y, 10, line_color)
